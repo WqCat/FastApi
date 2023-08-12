@@ -99,7 +99,41 @@ async def upload_files(files: List[UploadFile] = File(...)):  # 如果要上传�
         print(contents)
     return {"filename": files[0].filename, "content_type": files[0].content_type}
 
+"""【见run.py】FastAPI项目的静态文件配置"""
+
+"""Path Operation Configuration 路径操作配置"""
+
+@app04.post(
+    "/path_operation_configuration",
+    response_model=UserOut,
+    tags=["Path", "Operation", "Configuration"],
+    summary="This is summary",
+    description="This is description",
+    response_description="This is response description",
+    deprecated=True,
+    status_code=status.HTTP_200_OK
+)
+async def path_operation_configuration(user: UserIn):
+    """
+    Path Operation Configuration 路径操作配置
+    :param user: 用户信息
+    :return: 返回结果
+    """
+    return user.dict()
+
+"""【见run.py】FastAPI 应用的常见配置项"""
+
+"""Handling Errors 错误处理"""
+
+@app04.get("/http_exception")
+async def http_exception(city: str):
+    if city != "Beijing":
+        raise HTTPException(status_code=404, detail="City not found!", headers={"X-Error": "Error"})
+    return {"city": city}
 
 
-
-
+@app04.get("/http_exception/{city_id}")
+async def override_http_exception(city_id: int):
+    if city_id == 1:
+        raise HTTPException(status_code=418, detail="Nope! I don't like 1.")
+    return {"city_id": city_id}
