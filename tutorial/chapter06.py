@@ -116,7 +116,7 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
-pwd_context = CryptContext(schemes=["brcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")  #CryptContext 是一个用于处理密码哈希和验证的类
 
 oauths_schema = OAuth2PasswordBearer(tokenUrl="/chapter06/jwt/token")
 
@@ -129,7 +129,7 @@ def jwt_get_user(db, username: str):
         user_dict = db[username]
         return UserInDB(**user_dict)
 
-def jwt_authenticate_user(db, username: str, password: str):
+def jwt_authenticate_user(db, username: str, password: str):  #校验用户
     user =jwt_get_user(db=db, username=username)
     if not user:
         return  False
@@ -137,5 +137,58 @@ def jwt_authenticate_user(db, username: str, password: str):
         return False
     return user
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+#用于创建访问令牌（access token）以实现身份验证和授权功能
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):  #expires_delta令牌过期时间
     to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta   #datetime.utcnow()现在时间
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(claims=to_encode, key=SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+@app06.post("/jwt/token", response_model=Token)  #登录
+async def login_for_access_token(form_data:OAuth2PasswordRequestForm = Depends()):   #这意味着 form_data 参数将包含来自客户端的 OAuth 2.0 密码授权请求的表单数据
+    user = jwt_authenticate_user(db=fake_users_db, username=form_data.username, password=form_data.password)
+    if not user:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or passowrd",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expire = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username},expires_delta=access_token_expire
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+async def jwt_get_current_user(token: str = Depends(oauths_schema)):
+    credentials_exceeption = HTTPException(
+        status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token=token, key=SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise credentials_exceeption
+    except JWTError:
+        raise credentials_exceeption
+    user = jwt_get_user(db=fake_users_db, username=username)
+    if user is None:
+        raise credentials_exceeption
+    return user
+
+
+async def jwt_get_current_active_user(current_user: User = Depends(jwt_get_current_user)):
+    if current_user.disabled:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="Inactive user")
+    return current_user
+
+@app06.get("/jwt/users/me")
+async def jwt_read_users_me(current_user: User = Depends(jwt_get_current_active_user)):
+    return current_user
+
+
