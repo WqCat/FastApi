@@ -7,7 +7,7 @@
 
 from pydantic import BaseModel, PydanticUserError
 
-
+# aefsdf
 class Foo(BaseModel):
     x: 'Bar'
 
