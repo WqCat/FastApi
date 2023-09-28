@@ -42,7 +42,7 @@ async def validation_exception_handler(request, exc):
     """
     return PlainTextResponse(str(exc), status_code=400)
 
-@app.middleware('http')
+@app.middleware('http')   # 拦截http请求
 async def add_process_time_header(request: Request, call_next):   # call_next将接收request请求做为参数
     start_time = time.time()
     response = await call_next(request)

@@ -11,6 +11,13 @@ app08 = APIRouter()
 """【见run.py】CORS (Cross-Origin Resource Sharing) 跨源资源共享"""
 
 # 域的概念：协议+域名+端口
+#
+# 四.http://baidu.com:80
+# 1.http          协议
+#
+# 2.baidu.com    域名
+#
+# 3.80                  端口
 
 """Background Tasks 后台任务"""
 
